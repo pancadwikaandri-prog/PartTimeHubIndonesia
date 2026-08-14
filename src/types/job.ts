@@ -1,4 +1,4 @@
-export type WorkType = 'Part-Time' | 'Freelance' | 'Temporary' | 'Internship'
+export type WorkType = 'Full-Time' | 'Part-Time' | 'Freelance' | 'Temporary' | 'Internship'
 export type WorkMode = 'On-site' | 'Hybrid' | 'Remote'
 export type ApplicationMethod = 'whatsapp' | 'email' | 'url'
 

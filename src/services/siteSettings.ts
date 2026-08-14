@@ -5,7 +5,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   if (!supabase) return defaultSiteSettings
   const { data, error } = await supabase.from('site_settings').select('*').eq('id', 'main').maybeSingle()
   if (error) throw error
-  return data ? data as SiteSettings : defaultSiteSettings
+  return data ? { ...defaultSiteSettings, ...data } as SiteSettings : defaultSiteSettings
 }
 
 export async function saveSiteSettings(values: SiteSettingsForm): Promise<SiteSettings> {

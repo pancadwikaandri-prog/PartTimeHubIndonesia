@@ -53,9 +53,51 @@ button:disabled { cursor: not-allowed; }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes poster-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes poster-image-drift {
+  from { transform: scale(1.015) translate3d(0, 0, 0); }
+  to { transform: scale(1.075) translate3d(-.6%, -.4%, 0); }
+}
+
+@keyframes poster-content-enter {
+  from { opacity: 0; transform: translate3d(0, 20px, 0); filter: blur(5px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+}
+
+@keyframes poster-shine {
+  0%, 12% { transform: translateX(-190%) skewX(-12deg); opacity: 0; }
+  35% { opacity: 1; }
+  58%, 100% { transform: translateX(520%) skewX(-12deg); opacity: 0; }
+}
+
+@keyframes poster-ambient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
 .animate-fade-up { animation: fade-up .38s ease-out both; }
 .animate-slide-in { animation: slide-in .28s ease-out both; }
 .animate-toast-in { animation: toast-in .22s ease-out both; }
+.poster-progress { animation-name: poster-progress; animation-timing-function: linear; animation-fill-mode: both; }
+.poster-card-motion {
+  will-change: translate, scale, rotate, opacity, filter;
+  transition-property: translate, scale, rotate, opacity, filter, box-shadow;
+  transition-duration: 1600ms, 1600ms, 1600ms, 1250ms, 1450ms, 1600ms;
+  transition-timing-function: cubic-bezier(.16, 1, .3, 1);
+}
+.poster-active-image { animation: poster-image-drift 7.2s ease-in-out both; }
+.poster-content-enter { animation: poster-content-enter 1.2s cubic-bezier(.16, 1, .3, 1) both; }
+.poster-shine { animation: poster-shine 7.2s ease-in-out infinite; }
+.poster-ambient {
+  background: radial-gradient(circle at 18% 30%, rgba(72,197,170,.12), transparent 28%), radial-gradient(circle at 82% 60%, rgba(182,76,199,.2), transparent 30%);
+  background-size: 160% 160%;
+  animation: poster-ambient 10s ease-in-out infinite;
+}
+.poster-active-card { box-shadow: 0 34px 90px rgba(55,35,100,.42), 0 0 0 1px rgba(255,255,255,.12), 0 0 55px rgba(155,61,182,.16); }
 .reveal-on-scroll {
   opacity: 0;
   transform: translate3d(0, 26px, 0);

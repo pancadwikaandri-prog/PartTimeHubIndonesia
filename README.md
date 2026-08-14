@@ -1,4 +1,4 @@
-# Parttimehub Indonesia
+# Careerhub.indonesia
 
 Portal lowongan kerja part-time Indonesia dengan dua antarmuka: portal publik dan dashboard administrator.
 

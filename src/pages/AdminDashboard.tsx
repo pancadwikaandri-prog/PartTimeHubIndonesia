@@ -1,21 +1,25 @@
 import type { User } from '@supabase/supabase-js'
-import { ArrowUpRight, BriefcaseBusiness, Building2, CalendarDays, ChevronDown, CircleAlert, Eye, FilePenLine, LayoutDashboard, Link2, LogOut, Menu, MoreHorizontal, Plus, RefreshCw, Save, Search, Settings2, Sparkles, Trash2, X } from 'lucide-react'
+import { ArrowUpRight, BriefcaseBusiness, Building2, CalendarDays, ChevronDown, CircleAlert, Eye, FilePenLine, Images, LayoutDashboard, Link2, LogOut, Menu, MoreHorizontal, Plus, RefreshCw, Save, Search, Settings2, Sparkles, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AdminLogin } from '../components/admin/AdminLogin'
 import { ConfirmDialog } from '../components/admin/ConfirmDialog'
 import { JobFormDrawer } from '../components/admin/JobFormDrawer'
+import { PosterFormDrawer } from '../components/admin/PosterFormDrawer'
+import { PosterSlidesPanel } from '../components/admin/PosterSlidesPanel'
 import { JobDetailDrawer } from '../components/jobs/JobDetailDrawer'
 import { LogoAvatar } from '../components/ui/LogoAvatar'
 import { useToast } from '../components/ui/toast'
 import { demoModeEnabled, isSupabaseConfigured, supabase } from '../lib/supabase'
 import { formatRelativeDate } from '../lib/utils'
 import { createJob, deleteJob, listAdminJobs, updateJob } from '../services/jobs'
+import { createPosterSlide, deletePosterSlide, listAdminPosterSlides, updatePosterSlide } from '../services/posterSlides'
 import { getSiteSettings, saveSiteSettings } from '../services/siteSettings'
 import type { Job, JobFormValues } from '../types/job'
+import type { PosterSlide, PosterSlideFormValues } from '../types/posterSlide'
 import { defaultSiteSettings, type SiteSettings, type SiteSettingsForm } from '../types/siteSettings'
 
-type Section = 'overview' | 'jobs' | 'settings'
+type Section = 'overview' | 'jobs' | 'posters' | 'settings'
 
 export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null)
@@ -37,6 +41,14 @@ export function AdminDashboard() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(defaultSiteSettings)
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsSaving, setSettingsSaving] = useState(false)
+  const [posterSlides, setPosterSlides] = useState<PosterSlide[]>([])
+  const [postersLoading, setPostersLoading] = useState(false)
+  const [postersError, setPostersError] = useState('')
+  const [posterFormOpen, setPosterFormOpen] = useState(false)
+  const [editingPoster, setEditingPoster] = useState<PosterSlide | null>(null)
+  const [posterDeleteTarget, setPosterDeleteTarget] = useState<PosterSlide | null>(null)
+  const [posterSaving, setPosterSaving] = useState(false)
+  const [posterDeleting, setPosterDeleting] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -54,6 +66,13 @@ export function AdminDashboard() {
     finally { setJobsLoading(false) }
   }, [])
   useEffect(() => { if (authenticated) void loadJobs() }, [authenticated, loadJobs])
+  const loadPosters = useCallback(async () => {
+    setPostersLoading(true); setPostersError('')
+    try { setPosterSlides(await listAdminPosterSlides()) }
+    catch { setPostersError('Poster tidak dapat dimuat. Pastikan migrasi poster Supabase sudah diterapkan.') }
+    finally { setPostersLoading(false) }
+  }, [])
+  useEffect(() => { if (authenticated) void loadPosters() }, [authenticated, loadPosters])
   useEffect(() => {
     if (!authenticated) return
     setSettingsLoading(true)
@@ -92,6 +111,28 @@ export function AdminDashboard() {
     catch (cause) { toast(cause instanceof Error ? cause.message : 'Pengaturan tautan gagal disimpan.', 'error') }
     finally { setSettingsSaving(false) }
   }
+  const openPosterCreate = () => { setEditingPoster(null); setPosterFormOpen(true) }
+  const openPosterEdit = (slide: PosterSlide) => { setEditingPoster(slide); setPosterFormOpen(true) }
+  const savePoster = async (values: PosterSlideFormValues) => {
+    setPosterSaving(true)
+    try {
+      const saved = editingPoster ? await updatePosterSlide(editingPoster.id, values) : await createPosterSlide(values)
+      setPosterSlides((current) => (editingPoster ? current.map((slide) => slide.id === saved.id ? saved : slide) : [...current, saved]).sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at)))
+      setPosterFormOpen(false); setEditingPoster(null); toast(editingPoster ? 'Poster berhasil diperbarui.' : 'Poster berhasil ditambahkan.')
+    } catch (cause) { toast(cause instanceof Error ? cause.message : 'Poster gagal disimpan.', 'error') }
+    finally { setPosterSaving(false) }
+  }
+  const togglePoster = async (slide: PosterSlide) => {
+    try { const updated = await updatePosterSlide(slide.id, { is_active: !slide.is_active }); setPosterSlides((current) => current.map((item) => item.id === updated.id ? updated : item)); toast(updated.is_active ? 'Poster diaktifkan.' : 'Poster dijeda.') }
+    catch { toast('Status poster gagal diubah.', 'error') }
+  }
+  const confirmPosterDelete = async () => {
+    if (!posterDeleteTarget) return
+    setPosterDeleting(true)
+    try { await deletePosterSlide(posterDeleteTarget.id); setPosterSlides((current) => current.filter((slide) => slide.id !== posterDeleteTarget.id)); setPosterDeleteTarget(null); toast('Poster berhasil dihapus.') }
+    catch (cause) { toast(cause instanceof Error ? cause.message : 'Poster gagal dihapus.', 'error') }
+    finally { setPosterDeleting(false) }
+  }
 
   if (authLoading) return <div className="grid min-h-screen place-items-center bg-[#f7f9f8]"><div className="text-center"><div className="mx-auto size-9 animate-spin rounded-full border-2 border-slate-200 border-t-brand-700" /><p className="mt-3 text-xs font-bold text-slate-400">Menyiapkan dashboard…</p></div></div>
   if (!authenticated) return <AdminLogin configured={isSupabaseConfigured} onSubmit={login} onDemo={!isSupabaseConfigured && demoModeEnabled ? () => setDemoAuthenticated(true) : undefined} />
@@ -110,15 +151,15 @@ export function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#f1eee7] text-[#19191f] lg:grid lg:grid-cols-[264px_1fr]">
       <aside className="hidden bg-[#18181d] text-white lg:fixed lg:inset-y-0 lg:flex lg:w-[264px] lg:flex-col">
-        <div className="px-6 pb-7 pt-6"><AdminMark /><div className="mt-8 rounded-2xl border border-white/10 bg-white/[.055] p-4"><p className="text-[9px] font-black uppercase tracking-[.18em] text-white/35">Workspace</p><div className="mt-3 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-full bg-[#ffcf4a] text-xs font-black text-[#18181d]">AD</div><div className="min-w-0"><p className="truncate text-xs font-extrabold text-white">Parttimehub ID</p><p className="mt-0.5 text-[10px] text-white/40">Hiring control room</p></div></div></div></div>
-        <nav className="flex-1 px-4"><p className="px-3 pb-2 text-[9px] font-black uppercase tracking-[.2em] text-white/25">Menu utama</p><div className="space-y-1.5"><SidebarButton icon={<LayoutDashboard />} label="Dashboard" active={section === 'overview'} onClick={() => setSection('overview')} /><SidebarButton icon={<BriefcaseBusiness />} label="Lowongan" active={section === 'jobs'} onClick={() => setSection('jobs')} count={jobs.length} /><SidebarButton icon={<Settings2 />} label="Pengaturan Tautan" active={section === 'settings'} onClick={() => setSection('settings')} /></div></nav>
+        <div className="px-6 pb-7 pt-6"><AdminMark /><div className="mt-8 rounded-2xl border border-white/10 bg-white/[.055] p-4"><p className="text-[9px] font-black uppercase tracking-[.18em] text-white/35">Workspace</p><div className="mt-3 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-full bg-[#ffcf4a] text-xs font-black text-[#18181d]">CI</div><div className="min-w-0"><p className="truncate text-xs font-extrabold text-white">Careerhub.indonesia</p><p className="mt-0.5 text-[10px] text-white/40">Hiring control room</p></div></div></div></div>
+        <nav className="flex-1 px-4"><p className="px-3 pb-2 text-[9px] font-black uppercase tracking-[.2em] text-white/25">Menu utama</p><div className="space-y-1.5"><SidebarButton icon={<LayoutDashboard />} label="Dashboard" active={section === 'overview'} onClick={() => setSection('overview')} /><SidebarButton icon={<BriefcaseBusiness />} label="Lowongan" active={section === 'jobs'} onClick={() => setSection('jobs')} count={jobs.length} /><SidebarButton icon={<Images />} label="Poster Instagram" active={section === 'posters'} onClick={() => setSection('posters')} count={posterSlides.length} /><SidebarButton icon={<Settings2 />} label="Pengaturan Tautan" active={section === 'settings'} onClick={() => setSection('settings')} /></div></nav>
         {!isSupabaseConfigured && <div className="mx-4 mb-3 rounded-2xl border border-[#ffcf4a]/25 bg-[#ffcf4a]/10 p-3.5"><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#ffcf4a]">Mode demo lokal</p><p className="mt-1.5 text-[10px] leading-4 text-white/45">Perubahan aktif selama sesi berjalan.</p></div>}
         <div className="p-4"><Link to="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-white/45 transition hover:bg-white/5 hover:text-white"><Eye className="size-4" /> Lihat portal publik</Link><button onClick={() => void logout()} className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold text-white/45 transition hover:bg-[#ff6b5f]/10 hover:text-[#ff8b82]"><LogOut className="size-4" /> Keluar</button></div>
       </aside>
 
       <div className="lg:col-start-2">
         <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-[#d9d5cd] bg-[#f1eee7]/90 px-4 backdrop-blur-xl sm:px-7 lg:px-10">
-          <div className="flex items-center gap-3"><button onClick={() => setMobileMenu(true)} className="grid size-10 place-items-center rounded-full bg-[#18181d] text-white lg:hidden" aria-label="Buka menu"><Menu className="size-4" /></button><div className="lg:hidden"><AdminMark dark /></div><div className="hidden lg:block"><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#7d7a75]">{section === 'overview' ? 'Overview' : section === 'jobs' ? 'Vacancy library' : 'Public links'}</p><h1 className="mt-1 text-sm font-black text-[#19191f]">{section === 'overview' ? 'Control Board' : section === 'jobs' ? 'Kelola Lowongan' : 'Pengaturan Tautan'}</h1></div></div>
+          <div className="flex items-center gap-3"><button onClick={() => setMobileMenu(true)} className="grid size-10 place-items-center rounded-full bg-[#18181d] text-white lg:hidden" aria-label="Buka menu"><Menu className="size-4" /></button><div className="lg:hidden"><AdminMark dark /></div><div className="hidden lg:block"><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#7d7a75]">{section === 'overview' ? 'Overview' : section === 'jobs' ? 'Vacancy library' : section === 'posters' ? 'Poster manager' : 'Public links'}</p><h1 className="mt-1 text-sm font-black text-[#19191f]">{section === 'overview' ? 'Control Board' : section === 'jobs' ? 'Kelola Lowongan' : section === 'posters' ? 'Poster Instagram' : 'Pengaturan Tautan'}</h1></div></div>
           <div className="flex items-center gap-3 rounded-full border border-[#d9d5cd] bg-[#f8f6f1] py-1.5 pl-4 pr-1.5"><div className="hidden text-right sm:block"><p className="max-w-44 truncate text-[11px] font-extrabold text-[#29282e]">{displayName}</p><p className="mt-0.5 text-[9px] text-[#8a877f]">Administrator</p></div><div className="grid size-8 place-items-center rounded-full bg-[#5a61f6] text-[10px] font-black text-white">AD</div></div>
         </header>
 
@@ -147,27 +188,23 @@ export function AdminDashboard() {
               <div className="flex flex-col gap-3 border-b border-[#dedad2] p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5"><label className="flex w-full items-center gap-2.5 rounded-full border border-[#d6d1c8] bg-white px-4 py-3 sm:max-w-sm"><Search className="size-4 text-[#5a61f6]" /><span className="sr-only">Cari lowongan</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari pekerjaan, perusahaan…" className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none placeholder:text-[#aaa69d]" />{query && <button onClick={() => setQuery('')}><X className="size-3.5 text-[#8a877f]" /></button>}</label><div className="flex gap-2"><label className="relative flex-1 sm:flex-none"><span className="sr-only">Filter status</span><select value={status} onChange={(event) => setStatus(event.target.value)} className="h-full appearance-none rounded-full border border-[#d6d1c8] bg-white py-2.5 pl-4 pr-10 text-xs font-extrabold text-[#444249]"><option value="all">Semua status</option><option value="active">Aktif</option><option value="inactive">Nonaktif</option></select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 size-3.5 -translate-y-1/2 text-[#8a877f]" /></label><button onClick={() => void loadJobs()} className="grid size-11 place-items-center rounded-full bg-[#ffcf4a] text-[#18181d] hover:bg-[#f4be28]" aria-label="Muat ulang"><RefreshCw className={`size-4 ${jobsLoading ? 'animate-spin' : ''}`} /></button></div></div>
               {jobsError ? <div className="m-5 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4 text-xs leading-5 text-red-700"><CircleAlert className="mt-0.5 size-4 shrink-0" />{jobsError}</div> : <JobTable jobs={filteredJobs} loading={jobsLoading} onView={setViewingJob} onEdit={openEdit} onDelete={setDeleteTarget} onToggle={(job) => void toggleActive(job)} />}
             </section>
-          </> : <LinkSettingsPanel settings={siteSettings} loading={settingsLoading} saving={settingsSaving} onSave={saveLinks} />}
+          </> : section === 'posters' ? <PosterSlidesPanel slides={posterSlides} loading={postersLoading} error={postersError} onCreate={openPosterCreate} onEdit={openPosterEdit} onDelete={setPosterDeleteTarget} onToggle={(slide) => void togglePoster(slide)} onReload={() => void loadPosters()} /> : <LinkSettingsPanel settings={siteSettings} loading={settingsLoading} saving={settingsSaving} onSave={saveLinks} />}
         </main>
       </div>
 
-      {mobileMenu && <div className="fixed inset-0 z-50 lg:hidden"><button className="absolute inset-0 bg-[#111116]/55" onClick={() => setMobileMenu(false)} aria-label="Tutup menu" /><aside className="animate-slide-in absolute inset-y-0 left-0 flex w-[290px] flex-col bg-[#18181d] text-white shadow-2xl"><div className="flex h-[76px] items-center justify-between px-5"><AdminMark /><button onClick={() => setMobileMenu(false)} className="grid size-9 place-items-center rounded-full bg-white/10 text-white"><X className="size-4" /></button></div><nav className="flex-1 space-y-1.5 p-4"><SidebarButton icon={<LayoutDashboard />} label="Dashboard" active={section === 'overview'} onClick={() => { setSection('overview'); setMobileMenu(false) }} /><SidebarButton icon={<BriefcaseBusiness />} label="Lowongan" active={section === 'jobs'} onClick={() => { setSection('jobs'); setMobileMenu(false) }} count={jobs.length} /><SidebarButton icon={<Settings2 />} label="Pengaturan Tautan" active={section === 'settings'} onClick={() => { setSection('settings'); setMobileMenu(false) }} /></nav><div className="p-4"><Link to="/" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-extrabold text-white/50"><Eye className="size-4" /> Lihat portal publik</Link><button onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-extrabold text-[#ff8b82]"><LogOut className="size-4" /> Keluar</button></div></aside></div>}
+      {mobileMenu && <div className="fixed inset-0 z-50 lg:hidden"><button className="absolute inset-0 bg-[#111116]/55" onClick={() => setMobileMenu(false)} aria-label="Tutup menu" /><aside className="animate-slide-in absolute inset-y-0 left-0 flex w-[290px] flex-col bg-[#18181d] text-white shadow-2xl"><div className="flex h-[76px] items-center justify-between px-5"><AdminMark /><button onClick={() => setMobileMenu(false)} className="grid size-9 place-items-center rounded-full bg-white/10 text-white"><X className="size-4" /></button></div><nav className="flex-1 space-y-1.5 p-4"><SidebarButton icon={<LayoutDashboard />} label="Dashboard" active={section === 'overview'} onClick={() => { setSection('overview'); setMobileMenu(false) }} /><SidebarButton icon={<BriefcaseBusiness />} label="Lowongan" active={section === 'jobs'} onClick={() => { setSection('jobs'); setMobileMenu(false) }} count={jobs.length} /><SidebarButton icon={<Images />} label="Poster Instagram" active={section === 'posters'} onClick={() => { setSection('posters'); setMobileMenu(false) }} count={posterSlides.length} /><SidebarButton icon={<Settings2 />} label="Pengaturan Tautan" active={section === 'settings'} onClick={() => { setSection('settings'); setMobileMenu(false) }} /></nav><div className="p-4"><Link to="/" className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs font-extrabold text-white/50"><Eye className="size-4" /> Lihat portal publik</Link><button onClick={() => void logout()} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-extrabold text-[#ff8b82]"><LogOut className="size-4" /> Keluar</button></div></aside></div>}
       <JobFormDrawer open={formOpen} job={editingJob} saving={saving} onClose={() => { setFormOpen(false); setEditingJob(null) }} onSave={saveJob} />
+      <PosterFormDrawer open={posterFormOpen} slide={editingPoster} saving={posterSaving} onClose={() => { setPosterFormOpen(false); setEditingPoster(null) }} onSave={savePoster} />
       <JobDetailDrawer job={viewingJob} onClose={() => setViewingJob(null)} />
       <ConfirmDialog open={Boolean(deleteTarget)} title="Hapus lowongan ini?" description={deleteTarget ? `Lowongan “${deleteTarget.title}” dari ${deleteTarget.company_name} akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.` : ''} loading={deleting} onConfirm={() => void confirmDelete()} onClose={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={Boolean(posterDeleteTarget)} title="Hapus poster ini?" description={posterDeleteTarget ? `Poster “${posterDeleteTarget.title}” akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.` : ''} loading={posterDeleting} onConfirm={() => void confirmPosterDelete()} onClose={() => setPosterDeleteTarget(null)} />
     </div>
   )
 }
 
 function LinkSettingsPanel({ settings, loading, saving, onSave }: { settings: SiteSettings; loading: boolean; saving: boolean; onSave: (values: SiteSettingsForm) => Promise<void> }) {
-  const [values, setValues] = useState<SiteSettingsForm>({
-    post_job_url: settings.post_job_url,
-    instagram_url: settings.instagram_url,
-    threads_url: settings.threads_url,
-    telegram_url: settings.telegram_url,
-    whatsapp_url: settings.whatsapp_url,
-  })
-  useEffect(() => { setValues({ post_job_url: settings.post_job_url, instagram_url: settings.instagram_url, threads_url: settings.threads_url, telegram_url: settings.telegram_url, whatsapp_url: settings.whatsapp_url }) }, [settings])
+  const [values, setValues] = useState<SiteSettingsForm>(() => siteSettingsToForm(settings))
+  useEffect(() => { setValues(siteSettingsToForm(settings)) }, [settings])
   const update = (key: keyof SiteSettingsForm, value: string) => setValues((current) => ({ ...current, [key]: value }))
 
   return <div className="animate-fade-up">
@@ -175,12 +212,10 @@ function LinkSettingsPanel({ settings, loading, saving, onSave }: { settings: Si
     <div className="mt-8 grid gap-4 xl:grid-cols-[1fr_320px]">
       <form onSubmit={(event) => { event.preventDefault(); void onSave(values) }} className="rounded-[28px] border border-[#d6d1c8] bg-[#faf8f3] p-5 sm:p-7">
         <div className="flex items-center gap-3 border-b border-[#dedad2] pb-5"><div className="grid size-11 place-items-center rounded-full bg-[#5962f4] text-white"><Link2 className="size-5" /></div><div><h3 className="text-sm font-black text-[#222127]">Tautan footer</h3><p className="mt-1 text-[11px] text-[#8a877f]">Gunakan URL lengkap yang dimulai dengan https://</p></div></div>
-        {loading ? <div className="space-y-4 py-7">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-[70px] animate-pulse rounded-2xl bg-[#e9e5dd]" />)}</div> : <div className="grid gap-5 py-7 sm:grid-cols-2">
-          <SettingsUrlField className="sm:col-span-2" label="Post a Job" hint="Tautan tombol untuk perusahaan yang ingin memasang lowongan." value={values.post_job_url} onChange={(value) => update('post_job_url', value)} />
-          <SettingsUrlField label="Instagram" hint="Profil Instagram Parttimehub." value={values.instagram_url} onChange={(value) => update('instagram_url', value)} />
-          <SettingsUrlField label="Threads" hint="Profil Threads Parttimehub." value={values.threads_url} onChange={(value) => update('threads_url', value)} />
-          <SettingsUrlField label="Telegram" hint="Channel atau akun Telegram." value={values.telegram_url} onChange={(value) => update('telegram_url', value)} />
-          <SettingsUrlField label="WhatsApp" hint="Nomor atau tautan chat WhatsApp." value={values.whatsapp_url} onChange={(value) => update('whatsapp_url', value)} />
+        {loading ? <div className="space-y-4 py-7">{Array.from({ length: 9 }).map((_, index) => <div key={index} className="h-[70px] animate-pulse rounded-2xl bg-[#e9e5dd]" />)}</div> : <div className="space-y-6 py-7">
+          <SettingsUrlField label="Post a Job" hint="Tautan tombol untuk perusahaan yang ingin memasang lowongan." value={values.post_job_url} onChange={(value) => update('post_job_url', value)} />
+          <CommunitySettingsGroup title="Parttimehub Indonesia" description="Tautan komunitas Parttimehub yang sudah digunakan saat ini."><SettingsUrlField label="Instagram" hint="Profil Instagram Parttimehub." value={values.instagram_url} onChange={(value) => update('instagram_url', value)} /><SettingsUrlField label="Threads" hint="Profil Threads Parttimehub." value={values.threads_url} onChange={(value) => update('threads_url', value)} /><SettingsUrlField label="Telegram Channel" hint="Channel Telegram Parttimehub." value={values.telegram_url} onChange={(value) => update('telegram_url', value)} /><SettingsUrlField label="WhatsApp Channel" hint="Channel atau komunitas WhatsApp Parttimehub." value={values.whatsapp_url} onChange={(value) => update('whatsapp_url', value)} /></CommunitySettingsGroup>
+          <CommunitySettingsGroup title="Careerhub Indonesia" description="Isi tautan resmi Careerhub; kolom kosong tidak akan menjadi tautan aktif."><SettingsUrlField required={false} label="Instagram" hint="Profil Instagram Careerhub." value={values.careerhub_instagram_url} onChange={(value) => update('careerhub_instagram_url', value)} /><SettingsUrlField required={false} label="Threads" hint="Profil Threads Careerhub." value={values.careerhub_threads_url} onChange={(value) => update('careerhub_threads_url', value)} /><SettingsUrlField required={false} label="Telegram Channel" hint="Channel Telegram Careerhub." value={values.careerhub_telegram_url} onChange={(value) => update('careerhub_telegram_url', value)} /><SettingsUrlField required={false} label="WhatsApp Channel" hint="Channel atau komunitas WhatsApp Careerhub." value={values.careerhub_whatsapp_url} onChange={(value) => update('careerhub_whatsapp_url', value)} /></CommunitySettingsGroup>
         </div>}
         <div className="flex flex-col-reverse gap-3 border-t border-[#dedad2] pt-5 sm:flex-row sm:items-center sm:justify-between"><p className="text-[10px] leading-5 text-[#918d84]">Terakhir diperbarui {formatRelativeDate(settings.updated_at)}</p><button disabled={saving || loading} className="focus-ring inline-flex items-center justify-center gap-2 rounded-full bg-[#18181d] px-5 py-3 text-xs font-extrabold text-white transition hover:bg-[#5962f4] disabled:opacity-50"><Save className="size-4" />{saving ? 'Menyimpan…' : 'Simpan Tautan'}</button></div>
       </form>
@@ -189,9 +224,11 @@ function LinkSettingsPanel({ settings, loading, saving, onSave }: { settings: Si
   </div>
 }
 
-function SettingsUrlField({ label, hint, value, onChange, className = '' }: { label: string; hint: string; value: string; onChange: (value: string) => void; className?: string }) { return <label className={className}><span className="flex items-center justify-between"><span className="text-xs font-black text-[#302f35]">{label}</span><span className="text-[9px] font-bold uppercase tracking-[.12em] text-[#9a968d]">URL</span></span><span className="relative mt-2 block"><Link2 className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#7773df]" /><input type="url" required value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://..." className="focus-ring w-full rounded-2xl border border-[#d6d1c8] bg-white py-3.5 pl-11 pr-4 text-xs font-semibold text-[#302f35] outline-none transition focus:border-[#5962f4]" /></span><span className="mt-1.5 block text-[10px] leading-4 text-[#918d84]">{hint}</span></label> }
+function siteSettingsToForm(settings: SiteSettings): SiteSettingsForm { const { id: _id, updated_at: _updatedAt, ...values } = { ...defaultSiteSettings, ...settings }; return values }
+function CommunitySettingsGroup({ title, description, children }: { title: string; description: string; children: React.ReactNode }) { return <section className="rounded-2xl border border-[#dedad2] bg-white/60 p-4 sm:p-5"><div className="border-b border-[#e5e1da] pb-4"><h4 className="text-sm font-black text-[#25242a]">{title}</h4><p className="mt-1 text-[10px] leading-5 text-[#8a877f]">{description}</p></div><div className="mt-5 grid gap-5 sm:grid-cols-2">{children}</div></section> }
+function SettingsUrlField({ label, hint, value, onChange, className = '', required = true }: { label: string; hint: string; value: string; onChange: (value: string) => void; className?: string; required?: boolean }) { return <label className={className}><span className="flex items-center justify-between"><span className="text-xs font-black text-[#302f35]">{label}</span><span className="text-[9px] font-bold uppercase tracking-[.12em] text-[#9a968d]">URL</span></span><span className="relative mt-2 block"><Link2 className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[#7773df]" /><input type="url" required={required} value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://..." className="focus-ring w-full rounded-2xl border border-[#d6d1c8] bg-white py-3.5 pl-11 pr-4 text-xs font-semibold text-[#302f35] outline-none transition focus:border-[#5962f4]" /></span><span className="mt-1.5 block text-[10px] leading-4 text-[#918d84]">{hint}</span></label> }
 
-function AdminMark({ dark = false }: { dark?: boolean }) { return <div className="inline-flex items-center gap-2.5"><span className="relative grid size-9 place-items-center rounded-full bg-[#5962f4] text-white"><BriefcaseBusiness className="size-4" /><span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-[#18181d] bg-[#ffcf4a]" /></span><span className={`text-[17px] font-black tracking-[-.035em] ${dark ? 'text-[#18181d]' : 'text-white'}`}>parttime<span className="text-[#ffcf4a]">hub</span></span></div> }
+function AdminMark({ dark = false }: { dark?: boolean }) { return <img src="/careerhub-logo.jpg" alt="Careerhub.indonesia" className={`size-12 rounded-full object-cover shadow-sm ${dark ? 'ring-1 ring-[#d6d1c8]' : 'ring-1 ring-white/20'}`} /> }
 function SidebarButton({ icon, label, active, onClick, count }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; count?: number }) { return <button onClick={onClick} className={`flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-xs font-extrabold transition ${active ? 'bg-[#5962f4] text-white shadow-[0_8px_22px_rgba(89,98,244,.28)]' : 'text-white/45 hover:bg-white/5 hover:text-white'}`}><span className={`grid size-8 place-items-center rounded-xl [&>svg]:size-4 ${active ? 'bg-white/15' : 'bg-white/5'}`}>{icon}</span>{label}{count !== undefined && <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] ${active ? 'bg-[#ffcf4a] text-[#201f25]' : 'bg-white/10 text-white/55'}`}>{count}</span>}</button> }
 function StatusLine({ color, label, value }: { color: string; label: string; value: number }) { return <div className="flex items-center gap-2.5"><span className={`size-2 rounded-full ${color}`} /><span className="flex-1 text-[11px] font-bold text-white/50">{label}</span><span className="text-sm font-black">{value}</span></div> }
 function RecentJob({ job, onView, index }: { job: Job; onView: () => void; index: number }) { return <button onClick={onView} className="group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-[#efebe3] sm:px-5"><span className="w-5 text-[10px] font-black text-[#b1ada5]">{String(index + 1).padStart(2, '0')}</span><LogoAvatar name={job.company_name} url={job.company_logo_url} size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-extrabold text-[#27262c] group-hover:text-[#4c53d8]">{job.title}</p><p className="mt-1 truncate text-[10px] text-[#8a877f]">{job.company_name} · {job.location}</p></div><StatusBadge active={job.is_active} /><p className="hidden w-20 text-right text-[10px] font-semibold text-[#9c988f] sm:block">{formatRelativeDate(job.created_at)}</p><ArrowUpRight className="hidden size-4 text-[#b1ada5] transition group-hover:rotate-45 group-hover:text-[#5a61f6] sm:block" /></button> }

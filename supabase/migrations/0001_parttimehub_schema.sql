@@ -1,4 +1,4 @@
--- Parttimehub Indonesia development schema
+-- Careerhub.indonesia development schema
 create extension if not exists "pgcrypto";
 
 create table if not exists public.jobs (
@@ -9,7 +9,7 @@ create table if not exists public.jobs (
   company_description text not null default '',
   location text not null,
   category text not null,
-  work_type text not null check (work_type in ('Part-Time', 'Freelance', 'Temporary', 'Internship')),
+  work_type text not null check (work_type in ('Full-Time', 'Part-Time', 'Freelance', 'Temporary', 'Internship')),
   work_mode text not null default 'On-site' check (work_mode in ('On-site', 'Hybrid', 'Remote')),
   short_description text not null,
   description text not null,

@@ -15,7 +15,7 @@ export function initials(name: string) {
 }
 
 export function getApplicationHref(method: string, whatsapp: string | null, email: string | null, url: string | null) {
-  if (method === 'whatsapp' && whatsapp) return `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Halo, saya tertarik dengan lowongan yang tersedia di Parttimehub Indonesia.')}`
-  if (method === 'email' && email) return `mailto:${email}?subject=${encodeURIComponent('Lamaran melalui Parttimehub Indonesia')}`
+  if (method === 'whatsapp' && whatsapp) return `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Halo, saya tertarik dengan lowongan yang tersedia di Careerhub.indonesia.')}`
+  if (method === 'email' && email) return `mailto:${email}?subject=${encodeURIComponent('Lamaran melalui Careerhub.indonesia')}`
   return url || '#'
 }

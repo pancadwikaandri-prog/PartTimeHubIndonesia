@@ -58,7 +58,7 @@ export function JobDetailDrawer({ job, onClose }: { job: Job | null; onClose: ()
         </div>
         <div className="absolute inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#0f182a] sm:rounded-b-3xl sm:px-8">
           <div className="flex items-center justify-between gap-4">
-            <p className="hidden max-w-[260px] text-xs leading-5 text-slate-500 sm:block">Lamaran dikirim langsung ke perusahaan. Parttimehub tidak memungut biaya.</p>
+            <p className="hidden max-w-[260px] text-xs leading-5 text-slate-500 sm:block">Lamaran dikirim langsung ke perusahaan. Careerhub.indonesia tidak memungut biaya.</p>
             <a href={applicationHref} target={applicationHref.startsWith('http') ? '_blank' : undefined} rel="noreferrer" className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-800/15 transition hover:bg-brand-800 sm:w-auto">Lamar Sekarang <ArrowUpRight className="size-4" /></a>
           </div>
         </div>

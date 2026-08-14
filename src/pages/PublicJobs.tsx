@@ -1,13 +1,17 @@
 import { ArrowRight, ArrowUpRight, BadgeCheck, BriefcaseBusiness, Building2, CheckCircle2, ChevronDown, CircleAlert, Clock3, Filter, GraduationCap, HeartHandshake, MapPin, MessageCircleMore, Moon, MousePointer2, Search, ShieldCheck, SlidersHorizontal, Sparkles, Sun, UsersRound, WalletCards, X, Zap } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FaInstagram, FaTelegram, FaThreads, FaWhatsapp } from 'react-icons/fa6'
+import { Link } from 'react-router-dom'
 import { JobCard } from '../components/jobs/JobCard'
 import { JobDetailDrawer } from '../components/jobs/JobDetailDrawer'
 import { JobSkeleton } from '../components/jobs/JobSkeleton'
+import { PosterCarousel } from '../components/posters/PosterCarousel'
 import { Brand } from '../components/ui/Brand'
 import { listPublicJobs } from '../services/jobs'
+import { listPublicPosterSlides } from '../services/posterSlides'
 import { getSiteSettings } from '../services/siteSettings'
 import type { Job, JobFilters } from '../types/job'
+import type { PosterSlide } from '../types/posterSlide'
 import { defaultSiteSettings } from '../types/siteSettings'
 import { filterJobs } from '../utils/jobFilters'
 
@@ -17,15 +21,16 @@ export function PublicJobs() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [filters, setFilters] = useState<JobFilters>(initialFilters)
+  const [filters, setFilters] = useState<JobFilters>(() => ({ ...initialFilters, workType: new URLSearchParams(window.location.search).get('workType') || '' }))
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [posterSlides, setPosterSlides] = useState<PosterSlide[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [siteSettings, setSiteSettings] = useState(defaultSiteSettings)
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('parttimehub-theme') === 'dark' || (!localStorage.getItem('parttimehub-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches))
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('careerhub-theme') === 'dark' || (!localStorage.getItem('careerhub-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches))
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
-    localStorage.setItem('parttimehub-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('careerhub-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
   const loadJobs = useCallback(async () => {
@@ -36,6 +41,7 @@ export function PublicJobs() {
   }, [])
   useEffect(() => { void loadJobs() }, [loadJobs])
   useEffect(() => { void getSiteSettings().then(setSiteSettings).catch(() => setSiteSettings(defaultSiteSettings)) }, [])
+  useEffect(() => { void listPublicPosterSlides().then(setPosterSlides).catch(() => setPosterSlides([])) }, [])
 
   const visibleJobs = useMemo(() => filterJobs(jobs, filters), [jobs, filters])
   const locations = useMemo(() => [...new Set(jobs.map((job) => job.location))].sort(), [jobs])
@@ -49,9 +55,10 @@ export function PublicJobs() {
     <div id="top" className="min-h-screen bg-[#f7f9f8] transition-colors duration-300 dark:bg-[#0a1020] dark:text-slate-100">
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-[#0a1020]/90">
         <div className="mx-auto flex h-[70px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Brand inverse={darkMode} />
+          <Brand />
           <nav className="hidden items-center gap-7 md:flex" aria-label="Navigasi utama">
             <a href="#lowongan" className="focus-ring rounded text-sm font-bold text-slate-700 hover:text-brand-700 dark:text-slate-200 dark:hover:text-brand-300">Lowongan</a>
+            <Link to="/full-time" className="focus-ring rounded text-sm font-bold text-slate-500 hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300">Full-Time</Link>
             <a href="#cara-kerja" className="focus-ring rounded text-sm font-bold text-slate-500 hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300">Cara kerja</a>
             <a href="#tentang" className="focus-ring rounded text-sm font-bold text-slate-500 hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300">Tentang kami</a>
           </nav>
@@ -100,6 +107,8 @@ export function PublicJobs() {
           </div>
         </section>
 
+        <PosterCarousel slides={posterSlides} />
+
         <section id="lowongan" className="mx-auto max-w-7xl scroll-mt-24 px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
           <div className="flex items-end justify-between gap-4">
             <div><p className="text-xs font-extrabold uppercase tracking-[.13em] text-brand-700 dark:text-brand-300">Lowongan terbaru</p><h2 className="mt-2 text-2xl font-black tracking-[-.035em] text-slate-900 sm:text-3xl dark:text-white">Pilih peluang yang cocok untukmu</h2></div>
@@ -130,11 +139,12 @@ export function PublicJobs() {
                 <a href="#lowongan" className="focus-ring inline-flex w-fit items-center gap-2 rounded-xl text-sm font-extrabold text-brand-700 transition hover:text-brand-900 dark:text-brand-300 dark:hover:text-brand-200">Lihat semua lowongan <ArrowRight className="size-4" /></a>
               </div>
             </Reveal>
-            <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Reveal delay={0}><WorkStyle icon={<Clock3 />} title="Part-Time" text="Tambah pengalaman tanpa mengorbankan jadwal utama." count={jobs.filter((job) => job.work_type === 'Part-Time').length} onClick={() => { updateFilter('workType', 'Part-Time'); document.querySelector('#lowongan')?.scrollIntoView() }} /></Reveal>
-              <Reveal delay={70}><WorkStyle icon={<WalletCards />} title="Freelance" text="Ambil proyek sesuai keahlian dan kapasitas waktumu." count={jobs.filter((job) => job.work_type === 'Freelance').length} onClick={() => { updateFilter('workType', 'Freelance'); document.querySelector('#lowongan')?.scrollIntoView() }} /></Reveal>
-              <Reveal delay={140}><WorkStyle icon={<GraduationCap />} title="Internship" text="Bangun portofolio dan kenali dunia kerja lebih awal." count={jobs.filter((job) => job.work_type === 'Internship').length} onClick={() => { updateFilter('workType', 'Internship'); document.querySelector('#lowongan')?.scrollIntoView() }} /></Reveal>
-              <Reveal delay={210}><WorkStyle icon={<Zap />} title="Temporary" text="Temukan pekerjaan singkat untuk momen yang tepat." count={jobs.filter((job) => job.work_type === 'Temporary').length} onClick={() => { updateFilter('workType', 'Temporary'); document.querySelector('#lowongan')?.scrollIntoView() }} /></Reveal>
+            <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <Reveal delay={0}><WorkStyle href="/full-time" icon={<BriefcaseBusiness />} title="Full-Time" text="Bangun karier jangka panjang dengan ritme kerja yang konsisten." count={jobs.filter((job) => job.work_type === 'Full-Time').length} /></Reveal>
+              <Reveal delay={60}><WorkStyle icon={<Clock3 />} title="Part-Time" text="Tambah pengalaman tanpa mengorbankan jadwal utama." count={jobs.filter((job) => job.work_type === 'Part-Time').length} onClick={() => { updateFilter('workType', 'Part-Time'); document.querySelector('#lowongan')?.scrollIntoView() }} /></Reveal>
+              <Reveal delay={120}><WorkStyle icon={<WalletCards />} title="Freelance" text="Ambil proyek sesuai keahlian dan kapasitas waktumu." count={jobs.filter((job) => job.work_type === 'Freelance').length} onClick={() => { updateFilter('workType', 'Freelance'); document.querySelector('#lowongan')?.scrollIntoView() }} /></Reveal>
+              <Reveal delay={180}><WorkStyle icon={<GraduationCap />} title="Internship" text="Bangun portofolio dan kenali dunia kerja lebih awal." count={jobs.filter((job) => job.work_type === 'Internship').length} onClick={() => { updateFilter('workType', 'Internship'); document.querySelector('#lowongan')?.scrollIntoView() }} /></Reveal>
+              <Reveal delay={240}><WorkStyle icon={<Zap />} title="Temporary" text="Temukan pekerjaan singkat untuk momen yang tepat." count={jobs.filter((job) => job.work_type === 'Temporary').length} onClick={() => { updateFilter('workType', 'Temporary'); document.querySelector('#lowongan')?.scrollIntoView() }} /></Reveal>
             </div>
           </div>
         </section>
@@ -202,7 +212,7 @@ export function PublicJobs() {
           <div className="h-1 w-full bg-amber-400" />
           <div className="grid gap-11 py-10 text-center md:grid-cols-[1.3fr_.8fr_1fr] md:text-left">
             <div>
-              <h2 className="text-2xl font-bold tracking-[-.02em] text-white">Parttimehub Indonesia</h2>
+              <h2 className="text-2xl font-bold tracking-[-.02em] text-white">Careerhub.indonesia</h2>
               <p className="mx-auto mt-4 max-w-sm text-sm leading-7 text-slate-400 md:mx-0">Kerja fleksibel, rekrutmen cepat, peluang lokal terverifikasi.</p>
             </div>
             <div>
@@ -213,10 +223,13 @@ export function PublicJobs() {
               <p className="text-xs font-bold tracking-[.18em] text-amber-400">Hubungi Kami</p>
               <a href="mailto:official@parttimehubindonesia.com" className="mt-5 block text-sm text-white transition hover:text-amber-300">official@parttimehubindonesia.com</a>
               <p className="mt-3 text-sm text-slate-300">Jakarta & Seluruh Indonesia</p>
-              <div className="mt-6 flex justify-center gap-2.5 md:justify-start"><SocialLink href={siteSettings.instagram_url} label="Buka Instagram"><FaInstagram /></SocialLink><SocialLink href={siteSettings.threads_url} label="Buka Threads"><FaThreads /></SocialLink><SocialLink href={siteSettings.telegram_url} label="Buka Telegram"><FaTelegram /></SocialLink><SocialLink href={siteSettings.whatsapp_url} label="Buka WhatsApp"><FaWhatsapp /></SocialLink></div>
             </div>
           </div>
-          <div className="border-t border-white/25 pt-7"><div className="flex flex-col gap-5 text-center md:flex-row md:items-end md:justify-between md:text-left"><p className="max-w-xl text-xs leading-6 text-slate-400">© {new Date().getFullYear()} Parttimehub Indonesia — Menghubungkan mahasiswa dan pekerja lepas Indonesia dengan lowongan lokal terpercaya.</p><p className="text-[10px] font-bold uppercase tracking-[.24em] text-amber-400">Kerja fleksibel & rekrutmen cepat</p></div></div>
+          <div className="grid gap-4 border-t border-white/15 py-8 md:grid-cols-2">
+            <CommunityColumn brand="Parttimehub Indonesia" description="Komunitas peluang kerja fleksibel dan part-time di Indonesia." tone="amber" links={[{ label: 'Instagram', href: siteSettings.instagram_url, icon: <FaInstagram /> }, { label: 'Threads', href: siteSettings.threads_url, icon: <FaThreads /> }, { label: 'Telegram Channel', href: siteSettings.telegram_url, icon: <FaTelegram /> }, { label: 'WhatsApp Channel', href: siteSettings.whatsapp_url, icon: <FaWhatsapp /> }]} />
+            <CommunityColumn brand="Careerhub Indonesia" description="Komunitas pengembangan karier dan kesempatan kerja jangka panjang." tone="purple" links={[{ label: 'Instagram', href: siteSettings.careerhub_instagram_url, icon: <FaInstagram /> }, { label: 'Threads', href: siteSettings.careerhub_threads_url, icon: <FaThreads /> }, { label: 'Telegram Channel', href: siteSettings.careerhub_telegram_url, icon: <FaTelegram /> }, { label: 'WhatsApp Channel', href: siteSettings.careerhub_whatsapp_url, icon: <FaWhatsapp /> }]} />
+          </div>
+          <div className="border-t border-white/25 pt-7"><div className="flex flex-col gap-5 text-center md:flex-row md:items-end md:justify-between md:text-left"><p className="max-w-xl text-xs leading-6 text-slate-400">© {new Date().getFullYear()} Careerhub.indonesia — Menghubungkan mahasiswa dan pekerja lepas Indonesia dengan lowongan lokal terpercaya.</p><p className="text-[10px] font-bold uppercase tracking-[.24em] text-amber-400">Kerja fleksibel & rekrutmen cepat</p></div></div>
         </div>
       </footer>
       <JobDetailDrawer job={selectedJob} onClose={() => setSelectedJob(null)} />
@@ -228,7 +241,7 @@ export function PublicJobs() {
 
 function Stat({ value, label }: { value: number; label: string }) { return <div className="px-2 text-center"><p className="text-xl font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl">{value}+</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-xs">{label}</p></div> }
 function FilterFields({ filters, locations, categories, onUpdate }: { filters: JobFilters; locations: string[]; categories: string[]; onUpdate: <K extends keyof JobFilters>(key: K, value: JobFilters[K]) => void }) {
-  return <div className="mt-5 space-y-4"><FilterSelect label="Kota / Area" value={filters.location} options={locations} onChange={(value) => onUpdate('location', value)} /><FilterSelect label="Kategori" value={filters.category} options={categories} onChange={(value) => onUpdate('category', value)} /><FilterSelect label="Tipe kerja" value={filters.workType} options={['Part-Time', 'Freelance', 'Temporary', 'Internship']} onChange={(value) => onUpdate('workType', value)} /><label className="flex cursor-pointer items-center justify-between rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-700 dark:bg-white/5 dark:text-slate-300"><span>Tampilkan terbaru</span><input type="checkbox" checked={filters.latestOnly} onChange={(event) => onUpdate('latestOnly', event.target.checked)} className="size-4 accent-brand-700" /></label></div>
+  return <div className="mt-5 space-y-4"><FilterSelect label="Kota / Area" value={filters.location} options={locations} onChange={(value) => onUpdate('location', value)} /><FilterSelect label="Kategori" value={filters.category} options={categories} onChange={(value) => onUpdate('category', value)} /><FilterSelect label="Tipe kerja" value={filters.workType} options={['Full-Time', 'Part-Time', 'Freelance', 'Temporary', 'Internship']} onChange={(value) => onUpdate('workType', value)} /><label className="flex cursor-pointer items-center justify-between rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-700 dark:bg-white/5 dark:text-slate-300"><span>Tampilkan terbaru</span><input type="checkbox" checked={filters.latestOnly} onChange={(event) => onUpdate('latestOnly', event.target.checked)} className="size-4 accent-brand-700" /></label></div>
 }
 function FilterSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) { return <label className="block"><span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">{label}</span><span className="relative block"><select value={value} onChange={(event) => onChange(event.target.value)} className="focus-ring w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-8 text-xs font-bold text-slate-700 outline-none dark:border-white/10 dark:bg-[#182136] dark:text-slate-200"><option value="">Semua</option>{options.map((option) => <option key={option}>{option}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" /></span></label> }
 function StateCard({ icon, title, description, action }: { icon: React.ReactNode; title: string; description: string; action: React.ReactNode }) { return <div className="grid min-h-[390px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-white/15 dark:bg-[#121a2c]"><div><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400 [&>svg]:size-5">{icon}</div><h3 className="mt-4 font-black text-slate-900 dark:text-white">{title}</h3><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p><div className="mt-5">{action}</div></div></div> }
@@ -249,8 +262,8 @@ function Reveal({ children, className = '', delay = 0 }: { children: React.React
 
   return <div ref={elementRef} className={`reveal-on-scroll ${isVisible ? 'is-visible' : ''} ${className}`} style={{ transitionDelay: `${delay}ms` }}>{children}</div>
 }
-function WorkStyle({ icon, title, text, count, onClick }: { icon: React.ReactNode; title: string; text: string; count: number; onClick: () => void }) { return <button onClick={onClick} className="focus-ring group flex h-full w-full flex-col rounded-[22px] border border-slate-200 bg-slate-50 p-5 text-left transition duration-300 hover:-translate-y-1 hover:border-brand-300 hover:bg-white hover:shadow-[0_18px_40px_rgba(15,23,42,.08)] dark:border-white/10 dark:bg-white/[.035] dark:hover:border-brand-500/50 dark:hover:bg-white/[.06]"><span className="grid size-11 place-items-center rounded-2xl bg-white text-brand-700 shadow-sm transition group-hover:bg-brand-700 group-hover:text-white dark:bg-white/10 dark:text-brand-300 [&>svg]:size-5">{icon}</span><span className="mt-5 flex w-full items-center justify-between gap-3"><strong className="text-base font-black text-slate-900 dark:text-white">{title}</strong><span className="text-xs font-extrabold text-brand-700 dark:text-brand-300">{count} peluang</span></span><span className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{text}</span><span className="mt-5 inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-700 dark:text-slate-200">Jelajahi <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" /></span></button> }
+function WorkStyle({ icon, title, text, count, onClick, href }: { icon: React.ReactNode; title: string; text: string; count: number; onClick?: () => void; href?: string }) { const className = "focus-ring group flex h-full w-full flex-col rounded-[22px] border border-slate-200 bg-slate-50 p-5 text-left transition duration-300 hover:-translate-y-1 hover:border-brand-300 hover:bg-white hover:shadow-[0_18px_40px_rgba(15,23,42,.08)] dark:border-white/10 dark:bg-white/[.035] dark:hover:border-brand-500/50 dark:hover:bg-white/[.06]"; const content = <><span className="grid size-11 place-items-center rounded-2xl bg-white text-brand-700 shadow-sm transition group-hover:bg-brand-700 group-hover:text-white dark:bg-white/10 dark:text-brand-300 [&>svg]:size-5">{icon}</span><span className="mt-5 flex w-full items-center justify-between gap-3"><strong className="text-base font-black text-slate-900 dark:text-white">{title}</strong><span className="text-xs font-extrabold text-brand-700 dark:text-brand-300">{count} peluang</span></span><span className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{text}</span><span className="mt-5 inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-700 dark:text-slate-200">{href ? 'Pelajari' : 'Jelajahi'} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" /></span></>; return href ? <Link to={href} className={className}>{content}</Link> : <button onClick={onClick} className={className}>{content}</button> }
 function StepCard({ number, icon, title, text }: { number: string; icon: React.ReactNode; title: string; text: string }) { return <article className="relative h-full rounded-[24px] border border-slate-200 bg-white p-6 shadow-[0_12px_35px_rgba(15,23,42,.045)] dark:border-white/10 dark:bg-[#121a2c] dark:shadow-black/10"><div className="relative z-10 flex items-center justify-between"><span className="grid size-14 place-items-center rounded-2xl bg-brand-100 text-brand-800 dark:bg-brand-400/10 dark:text-brand-300 [&>svg]:size-6">{icon}</span><span className="text-4xl font-black tracking-[-.06em] text-slate-100 dark:text-white/[.06]">{number}</span></div><h3 className="mt-7 text-lg font-black tracking-tight text-slate-900 dark:text-white">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{text}</p></article> }
 function MiniMetric({ value, label }: { value: string; label: string }) { return <div className="rounded-2xl border border-white/10 bg-white/[.07] p-4"><p className="text-2xl font-black">{value}</p><p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-brand-100/60">{label}</p></div> }
 function Benefit({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) { return <div className="flex h-full gap-4 rounded-[22px] border border-slate-200 bg-slate-50 p-5 transition duration-300 hover:border-brand-200 hover:bg-brand-50/40 dark:border-white/10 dark:bg-white/[.035] dark:hover:border-brand-500/30 dark:hover:bg-brand-400/[.04]"><div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white text-brand-700 shadow-sm dark:bg-white/10 dark:text-brand-300 [&>svg]:size-5">{icon}</div><div><p className="text-sm font-extrabold text-slate-900 dark:text-white">{title}</p><p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{text}</p></div></div> }
-function SocialLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) { return <a href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="focus-ring grid size-10 place-items-center rounded-full border border-white/20 bg-white/5 text-lg text-white transition hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-400 hover:text-[#080f2a]">{children}</a> }
+function CommunityColumn({ brand, description, tone, links }: { brand: string; description: string; tone: 'amber' | 'purple'; links: Array<{ label: string; href: string; icon: React.ReactNode }> }) { const accent = tone === 'amber' ? 'text-amber-300' : 'text-fuchsia-300'; const hover = tone === 'amber' ? 'hover:border-amber-300/60 hover:bg-amber-300/10' : 'hover:border-fuchsia-300/60 hover:bg-fuchsia-300/10'; return <section className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[.045] p-5 text-left sm:p-6"><div className={`absolute -right-12 -top-14 size-32 rounded-full border-[22px] ${tone === 'amber' ? 'border-amber-300/10' : 'border-fuchsia-300/10'}`} /><div className="relative"><p className={`text-[10px] font-black uppercase tracking-[.18em] ${accent}`}>Community</p><h3 className="mt-2 text-xl font-black tracking-[-.03em] text-white">{brand}</h3><p className="mt-2 max-w-md text-xs leading-5 text-slate-400">{description}</p><div className="mt-5 grid gap-2 sm:grid-cols-2">{links.map((link) => link.href ? <a key={link.label} href={link.href} target="_blank" rel="noreferrer" className={`focus-ring group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[.035] px-3.5 py-3 text-xs font-extrabold text-slate-200 transition duration-300 hover:-translate-y-0.5 ${hover}`}><span className={`text-lg ${accent}`}>{link.icon}</span><span>{link.label}</span><ArrowUpRight className="ml-auto size-3.5 text-white/30 transition group-hover:rotate-45 group-hover:text-white" /></a> : <span key={link.label} className="flex items-center gap-3 rounded-xl border border-dashed border-white/10 px-3.5 py-3 text-xs font-bold text-slate-600"><span className="text-lg">{link.icon}</span><span>{link.label}</span><span className="ml-auto text-[8px] uppercase tracking-wider">Belum diatur</span></span>)}</div></div></section> }

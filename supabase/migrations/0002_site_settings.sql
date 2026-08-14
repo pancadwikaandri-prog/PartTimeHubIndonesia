@@ -33,10 +33,10 @@ insert into public.site_settings (
   id, post_job_url, instagram_url, threads_url, telegram_url, whatsapp_url
 ) values (
   'main',
-  'https://wa.me/?text=Halo%20Parttimehub%20Indonesia%2C%20saya%20ingin%20memasang%20lowongan%20pekerjaan.',
+  'https://wa.me/?text=Halo%20Careerhub.indonesia%2C%20saya%20ingin%20memasang%20lowongan%20pekerjaan.',
   'https://www.instagram.com/parttimehubindonesia/',
   'https://www.threads.net/@parttimehubindonesia',
   'https://t.me/parttimehubindonesia',
-  'https://wa.me/?text=Halo%20Parttimehub%20Indonesia%2C%20saya%20ingin%20memasang%20lowongan%20pekerjaan.'
+  'https://wa.me/?text=Halo%20Careerhub.indonesia%2C%20saya%20ingin%20memasang%20lowongan%20pekerjaan.'
 )
 on conflict (id) do nothing;

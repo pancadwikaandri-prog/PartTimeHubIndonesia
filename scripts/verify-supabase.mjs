@@ -34,7 +34,7 @@ assert(!settingsUpdateError && updatedSettings, `Admin settings update failed: $
 const now = Date.now()
 const payload = {
   title: `Integration Test ${now}`,
-  company_name: 'Parttimehub QA',
+  company_name: 'Careerhub.indonesia QA',
   company_description: 'Temporary local integration record.',
   location: 'Jakarta',
   category: 'Quality Assurance',

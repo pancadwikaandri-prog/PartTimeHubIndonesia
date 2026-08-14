@@ -1,4 +1,4 @@
-import { ArrowLeft, BriefcaseBusiness, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -18,7 +18,7 @@ export function AdminLogin({ onSubmit, onDemo, configured }: { onSubmit: (email:
         <div className="absolute -right-24 -top-24 size-[430px] rounded-full border-[78px] border-[#5962f4]/70" /><div className="absolute -bottom-52 -left-20 size-[520px] rounded-full bg-[#ffcf4a]" /><div className="absolute bottom-24 right-16 grid grid-cols-5 gap-3 opacity-20">{Array.from({ length: 25 }).map((_, index) => <span key={index} className="size-2 rounded-full bg-white" />)}</div>
         <div className="relative"><LoginMark /></div>
         <div className="relative max-w-lg"><span className="inline-flex items-center gap-2 rounded-full bg-[#5962f4] px-3 py-1.5 text-[10px] font-black uppercase tracking-[.13em] text-white"><ShieldCheck className="size-4" /> Area administrator</span><h1 className="mt-7 text-[56px] font-black leading-[1.02] tracking-[-.06em]">Peluang besar<br />dimulai di sini.</h1><p className="mt-5 max-w-md text-sm leading-7 text-white/50">Kendalikan setiap lowongan, jaga informasinya tetap akurat, dan bantu talenta menemukan tempatnya.</p></div>
-        <p className="relative text-[10px] font-bold uppercase tracking-[.16em] text-[#18181d]/45">Parttimehub Indonesia · Hiring Control Room</p>
+        <p className="relative text-[10px] font-bold uppercase tracking-[.16em] text-[#18181d]/45">Careerhub.indonesia · Hiring Control Room</p>
       </section>
       <section className="flex min-h-screen flex-col px-5 py-6 sm:px-10 lg:px-16">
         <div className="flex items-center justify-between lg:justify-end"><div className="lg:hidden"><LoginMark dark /></div><Link to="/" className="focus-ring inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-[#77736c] hover:bg-white hover:text-[#4d54c8]"><ArrowLeft className="size-4" /> Kembali ke portal</Link></div>
@@ -38,5 +38,5 @@ export function AdminLogin({ onSubmit, onDemo, configured }: { onSubmit: (email:
   )
 }
 
-function LoginMark({ dark = false }: { dark?: boolean }) { return <div className="inline-flex items-center gap-2.5"><span className="relative grid size-10 place-items-center rounded-full bg-[#5962f4] text-white"><BriefcaseBusiness className="size-[18px]" /><span className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-[#18181d] bg-[#ffcf4a]" /></span><span className={`text-xl font-black tracking-[-.04em] ${dark ? 'text-[#18181d]' : 'text-white'}`}>parttime<span className="text-[#ffcf4a]">hub</span></span></div> }
+function LoginMark({ dark = false }: { dark?: boolean }) { return <img src="/careerhub-logo.jpg" alt="Careerhub.indonesia" className={`size-14 rounded-full object-cover shadow-sm ${dark ? 'ring-1 ring-[#d6d1c8]' : 'ring-1 ring-white/20'}`} /> }
 function FieldIcon({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) { return <div className="flex items-center gap-3 rounded-2xl border border-[#d6d1c8] bg-[#faf8f3] px-4 py-4 transition focus-within:border-[#5962f4] focus-within:ring-4 focus-within:ring-[#5962f4]/10"><span className="text-[#8a877f] [&>svg]:size-4">{icon}</span>{children}</div> }
