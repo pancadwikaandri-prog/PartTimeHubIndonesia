@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
 const url = process.env.VITE_SUPABASE_URL
-const anonKey = process.env.VITE_SUPABASE_ANON_KEY
+const anonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
 const email = process.env.LOCAL_ADMIN_EMAIL
 const password = process.env.LOCAL_ADMIN_PASSWORD
+const nonAdminEmail = process.env.LOCAL_NON_ADMIN_EMAIL
+const nonAdminPassword = process.env.LOCAL_NON_ADMIN_PASSWORD
 
 if (!url || !anonKey || !email || !password) {
   throw new Error('Missing local Supabase test environment variables.')
@@ -11,6 +13,7 @@ if (!url || !anonKey || !email || !password) {
 
 const anon = createClient(url, anonKey, { auth: { persistSession: false } })
 const admin = createClient(url, anonKey, { auth: { persistSession: false } })
+const nonAdmin = nonAdminEmail && nonAdminPassword ? createClient(url, anonKey, { auth: { persistSession: false } }) : null
 const assert = (condition, message) => { if (!condition) throw new Error(message) }
 
 const { data: publicBefore, error: publicReadError } = await anon.from('jobs').select('id,is_active')
@@ -27,6 +30,18 @@ assert(Boolean(anonymousSettingsWriteError) || anonymousSettingsWrite?.length ==
 
 const { error: loginError } = await admin.auth.signInWithPassword({ email, password })
 assert(!loginError, `Admin login failed: ${loginError?.message}`)
+
+const { data: adminAllowed, error: adminCheckError } = await admin.rpc('is_admin')
+assert(!adminCheckError && adminAllowed === true, `Configured account is not allowlisted: ${adminCheckError?.message}`)
+
+if (nonAdmin) {
+  const { error: nonAdminLoginError } = await nonAdmin.auth.signInWithPassword({ email: nonAdminEmail, password: nonAdminPassword })
+  assert(!nonAdminLoginError, `Non-admin control account login failed: ${nonAdminLoginError?.message}`)
+  const { data: nonAdminAllowed, error: nonAdminCheckError } = await nonAdmin.rpc('is_admin')
+  assert(!nonAdminCheckError && nonAdminAllowed === false, 'Non-admin control account was incorrectly allowlisted.')
+  const { data: nonAdminWrite, error: nonAdminWriteError } = await nonAdmin.from('jobs').insert({ title: 'Unauthorized authenticated test' }).select()
+  assert(Boolean(nonAdminWriteError) || nonAdminWrite?.length === 0, 'A non-admin authenticated account could create a vacancy.')
+}
 
 const { data: updatedSettings, error: settingsUpdateError } = await admin.from('site_settings').update({ telegram_url: publicSettings.telegram_url }).eq('id', 'main').select().single()
 assert(!settingsUpdateError && updatedSettings, `Admin settings update failed: ${settingsUpdateError?.message}`)
@@ -82,5 +97,6 @@ try {
 } finally {
   if (logoPath) await admin.storage.from('company-logos').remove([logoPath])
   if (createdId) await admin.from('jobs').delete().eq('id', createdId)
+  if (nonAdmin) await nonAdmin.auth.signOut()
   await admin.auth.signOut()
 }

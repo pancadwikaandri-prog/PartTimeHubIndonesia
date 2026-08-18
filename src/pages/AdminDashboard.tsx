@@ -10,6 +10,7 @@ import { PosterSlidesPanel } from '../components/admin/PosterSlidesPanel'
 import { JobDetailDrawer } from '../components/jobs/JobDetailDrawer'
 import { LogoAvatar } from '../components/ui/LogoAvatar'
 import { useToast } from '../components/ui/toast'
+import { ADMIN_USERNAME, isAdminIdentity, resolveAdminAuthEmail } from '../lib/adminAuth'
 import { demoModeEnabled, isSupabaseConfigured, supabase } from '../lib/supabase'
 import { formatRelativeDate } from '../lib/utils'
 import { createJob, deleteJob, listAdminJobs, updateJob } from '../services/jobs'
@@ -53,9 +54,18 @@ export function AdminDashboard() {
 
   useEffect(() => {
     if (!supabase) { setAuthLoading(false); return }
-    void supabase.auth.getSession().then(({ data }) => { setUser(data.session?.user ?? null); setAuthLoading(false) })
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
-    return () => data.subscription.unsubscribe()
+    const authClient = supabase
+    let mounted = true
+    void authClient.auth.getUser().then(async ({ data, error }) => {
+      const verifiedUser = !error && isAdminIdentity(data.user) ? data.user : null
+      if (data.user && !verifiedUser) await authClient.auth.signOut()
+      if (mounted) setUser(verifiedUser)
+    }).catch(() => { if (mounted) setUser(null) }).finally(() => { if (mounted) setAuthLoading(false) })
+    const { data } = authClient.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user
+      setUser(nextUser && isAdminIdentity(nextUser) ? nextUser : null)
+    })
+    return () => { mounted = false; data.subscription.unsubscribe() }
   }, [])
 
   const authenticated = Boolean(user || demoAuthenticated)
@@ -79,10 +89,16 @@ export function AdminDashboard() {
     void getSiteSettings().then(setSiteSettings).catch(() => toast('Pengaturan tautan belum dapat dimuat.', 'error')).finally(() => setSettingsLoading(false))
   }, [authenticated, toast])
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     if (!supabase) throw new Error('Supabase belum dikonfigurasi di lingkungan lokal.')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Email atau kata sandi tidak valid.' : error.message)
+    const email = resolveAdminAuthEmail(username)
+    if (!email) throw new Error('Username atau kata sandi tidak valid.')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Username atau kata sandi tidak valid.' : error.message)
+    if (!isAdminIdentity(data.user)) {
+      await supabase.auth.signOut()
+      throw new Error('Akun ini tidak memiliki akses administrator.')
+    }
   }
   const logout = async () => { if (supabase && user) await supabase.auth.signOut(); setDemoAuthenticated(false); setUser(null) }
   const saveJob = async (values: JobFormValues) => {
@@ -144,7 +160,7 @@ export function AdminDashboard() {
   const activeCount = jobs.filter((job) => job.is_active).length
   const inactiveCount = jobs.length - activeCount
   const companyCount = new Set(jobs.map((job) => job.company_name)).size
-  const displayName = user?.email || 'Admin Demo'
+  const displayName = user ? ADMIN_USERNAME : 'Admin Demo'
   const today = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
   const activePercentage = jobs.length ? Math.round((activeCount / jobs.length) * 100) : 0
 

@@ -1,16 +1,16 @@
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
-export function AdminLogin({ onSubmit, onDemo, configured }: { onSubmit: (email: string, password: string) => Promise<void>; onDemo?: () => void; configured: boolean }) {
-  const [email, setEmail] = useState('')
+export function AdminLogin({ onSubmit, onDemo, configured }: { onSubmit: (username: string, password: string) => Promise<void>; onDemo?: () => void; configured: boolean }) {
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setLoading(true)
-    try { await onSubmit(email, password) } catch (cause) { setError(cause instanceof Error ? cause.message : 'Email atau kata sandi tidak valid.') } finally { setLoading(false) }
+    try { await onSubmit(username, password) } catch (cause) { setError(cause instanceof Error ? cause.message : 'Username atau kata sandi tidak valid.') } finally { setLoading(false) }
   }
   return (
     <main className="grid min-h-screen bg-[#f1eee7] lg:grid-cols-[1.05fr_.95fr]">
@@ -23,10 +23,10 @@ export function AdminLogin({ onSubmit, onDemo, configured }: { onSubmit: (email:
       <section className="flex min-h-screen flex-col px-5 py-6 sm:px-10 lg:px-16">
         <div className="flex items-center justify-between lg:justify-end"><div className="lg:hidden"><LoginMark dark /></div><Link to="/" className="focus-ring inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-[#77736c] hover:bg-white hover:text-[#4d54c8]"><ArrowLeft className="size-4" /> Kembali ke portal</Link></div>
         <div className="mx-auto flex w-full max-w-[430px] flex-1 flex-col justify-center py-10">
-          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#5962f4]">Selamat datang kembali</p><h2 className="mt-3 text-[40px] font-black leading-none tracking-[-.055em] text-[#18181d]">Masuk ke<br />control room.</h2><p className="mt-4 text-sm leading-6 text-[#77736c]">Gunakan akun admin Supabase yang telah terdaftar.</p>
+          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#5962f4]">Selamat datang kembali</p><h2 className="mt-3 text-[40px] font-black leading-none tracking-[-.055em] text-[#18181d]">Masuk ke<br />control room.</h2><p className="mt-4 text-sm leading-6 text-[#77736c]">Gunakan username dan kata sandi administrator.</p>
           {!configured && <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-5 text-amber-800"><strong>Mode pratinjau lokal.</strong> Supabase belum dihubungkan. Isi variabel di <code className="font-bold">.env</code> untuk mengaktifkan login nyata.</div>}
           <form className="mt-7 space-y-4" onSubmit={submit}>
-            <FieldIcon icon={<Mail />}><label className="sr-only" htmlFor="admin-email">Email admin</label><input id="admin-email" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@perusahaan.co.id" className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:font-medium placeholder:text-slate-400" /></FieldIcon>
+            <FieldIcon icon={<UserRound />}><label className="sr-only" htmlFor="admin-username">Username admin</label><input id="admin-username" type="text" required autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="AdminCareerHub" className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:font-medium placeholder:text-slate-400" /></FieldIcon>
             <FieldIcon icon={<LockKeyhole />}><label className="sr-only" htmlFor="admin-password">Kata sandi</label><input id="admin-password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Kata sandi" className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:font-medium placeholder:text-slate-400" /><button type="button" onClick={() => setShowPassword((value) => !value)} className="focus-ring rounded text-slate-400 hover:text-slate-700" aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}>{showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button></FieldIcon>
             {error && <p role="alert" className="rounded-xl bg-red-50 px-3.5 py-3 text-xs font-semibold text-red-700">{error}</p>}
             <button disabled={loading || !configured} className="focus-ring flex w-full items-center justify-center rounded-full bg-[#18181d] py-3.5 text-sm font-extrabold text-white shadow-[0_7px_0_#d3cec4] transition hover:-translate-y-0.5 hover:bg-[#5962f4] disabled:bg-[#b9b5ad]">{loading ? 'Memverifikasi…' : 'Masuk ke Dashboard'}</button>
